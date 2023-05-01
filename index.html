@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <style>
+        :root {
+            --timing: 2s;
+        }
+
+        .wikitable {
+            background-color: #f8f9fa;
+            color: #202122;
+            margin: 1em 0;
+            border: 1px solid #a2a9b1;
+            border-collapse: collapse;
+        }
+
+        .wikitable>tr>th,
+        .wikitable>*>tr>th {
+            background-color: #eaecf0;
+            text-align: center;
+        }
+
+        .wikitable>tr>th,
+        .wikitable>tr>td,
+        .wikitable>*>tr>th,
+        .wikitable>*>tr>td {
+            border: 1px solid #a2a9b1;
+            padding: 0.2em 0.4em;
+        }
+
+        .clonedCell {
+            position: absolute;
+            transition-duration: var(--timing);
+            background-color: black;
+            color: white;
+
+        }
+
+        .clonedCell.middle {
+            display: flex;
+            align-items: center;
+            justify-content: end;
+            /* height: auto !important; */
+            /* width: auto !important; */
+        }
+
+        .op {
+            /* font-size: 10px; */
+            opacity: 0;
+            transition-duration: var(--timing);
+        }
+
+
+        .result {
+            text-align: center;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+
+
+    <table style="text-align:right;" class="wikitable">
+
+        <tbody id="mainBody">
+
+        </tbody>
+    </table>
+
+    <div style="position: absolute; top: 84px; left: 183px;" class="op op2">⨯</div>
+    <div style="position: absolute; top: 84px;left: 227px;transform: rotate(45deg);" class="op op2">⨯</div>
+    <div style="position: absolute; top: 84px;left: 274px;" class="op op2">=</div>
+    <div style="position: absolute; top: 80px;left: 290px; padding: 3px;border: 1px solid #a2a9b1" class="op result"
+        id="result"></div>
+
+    <script>
+        const vals = [];
+        const maxCount = 4;
+        let count = 0;
+        let preVals = [1, 0, 1, 0, 1, 1, 0, 1, 3, 1, 0, 1, 7, 6, 1];
+
+        let generatedVals = [];
+
+        for (let i = 0n; i < 100n; i += 1n) {
+            generatedVals.push([]);
+            for (let j = 0n; j < i + 1n; j += 1n) {
+                if (j == 0n) {
+                    generatedVals[generatedVals.length - 1].push(0n);
+                    continue;
+                }
+
+                if (j == i) {
+                    generatedVals[generatedVals.length - 1].push(1n);
+                    continue;
+                }
+
+                generatedVals[generatedVals.length - 1].push(generatedVals[i - 1n][j] * j + generatedVals[i - 1n][j - 1n]);
+            }
+        }
+
+        generatedVals = generatedVals.flat();
+
+
+        const target = document.querySelector("#target");
+        const table = document.querySelector(".wikitable");
+        const result = document.getElementById("result");
+
+        function getRow(index) {
+            return rows[index + 1];
+        }
+
+        function getColumn(row, index) {
+            return row.children[index];
+        }
+
+        function getCoords(x, y) {
+            return getColumn(getRow(y), x);
+        }
+
+        function cloneCell(x, y) {
+            const selectedElem = getCoords(x, y);
+            const size = getComputedStyle(selectedElem, null);
+            const boundingRect = selectedElem.getBoundingClientRect();
+            const clonedCell = selectedElem.cloneNode();
+
+            clonedCell.innerText = selectedElem.innerText;
+            clonedCell.classList.add("clonedCell");
+            clonedCell.style.top = `${boundingRect.top - parseFloat(size.borderBlockWidth) / 2}px`;
+            clonedCell.style.left = `${boundingRect.left - parseFloat(size.borderBlockWidth) / 2}px`;
+            clonedCell.style.height = size.getPropertyValue("height");
+            clonedCell.style.width = size.getPropertyValue("width");
+
+            if (y < 0) {
+                clonedCell.classList.add("middle");
+            }
+
+            selectedElem.parentElement.append(clonedCell);
+            return clonedCell;
+        }
+
+        function moveTo(x, y, elem) {
+
+            const selectedElem = getCoords(x, y);
+            const boundingRect = selectedElem.getBoundingClientRect();
+            const size = getComputedStyle(selectedElem, null);
+
+            elem.style.top = `${boundingRect.top - parseFloat(size.borderBlockWidth) / 2}px`;
+            elem.style.left = `${boundingRect.left - parseFloat(size.borderBlockWidth) / 2}px`;
+            elem.style.height = `${boundingRect.height + parseFloat(size.borderBlockWidth) / 2}px`;
+            elem.style.width = `${boundingRect.width + parseFloat(size.borderBlockWidth) / 2}px`;
+        }
+
+        let xCoord = 1;
+        let yCoord = 0;
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+
+
+        async function start() {
+            count++;
+
+            if (count > maxCount) {
+                return;
+                // document.documentElement.style.setProperty('--timing', '0.001s');
+            }
+
+            if (yCoord + 1 == xCoord) {
+                getCoords(xCoord, yCoord).textContent = "1";
+                xCoord = 1;
+                yCoord++;
+
+                // await sleep(1000);
+
+                start();
+                return;
+            }
+
+            if (xCoord == 1) {
+                getCoords(xCoord, yCoord).textContent = "0";
+
+                // await sleep(1000);
+                xCoord++;
+                start();
+                return;
+            }
+
+            const product1 = cloneCell(xCoord, yCoord - 1);
+            const product2 = cloneCell(xCoord, -1);
+            const sum = cloneCell(xCoord - 1, yCoord - 1);
+
+            if (count <= maxCount) {
+                await sleep(500);
+            }
+
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+
+                    const val = BigInt(product1.innerText) * BigInt(product2.innerText) + BigInt(sum.innerText);
+                    preVals.push(val);
+
+                    document.getElementById("result").textContent = val;
+                    product1.style.top = "80px";
+                    product1.style.left = "150px";
+
+                    product2.style.top = "80px";
+                    product2.style.left = "200px";
+
+                    sum.style.top = "80px";
+                    sum.style.left = "245px";
+                    result.style.display = "block";
+
+                    for (const elem of document.getElementsByClassName("op")) {
+                        elem.style.opacity = "1";
+                    }
+
+
+                    if (product2.classList.contains("middle")) {
+                        product2.style.height = "auto";
+                        product2.style.width = "auto";
+                    }
+
+                    sum.ontransitionend = async () => {
+
+                        sum.ontransitionend = () => { };
+
+                        document.getElementById("result").style.border = "0";
+                        product1.remove();
+                        product2.remove();
+                        sum.remove();
+
+                        for (const elem of document.getElementsByClassName("op2")) {
+                            elem.style.opacity = "0";
+                        }
+
+
+                        // const clonedRes = result.cloneNode(true);
+                        // clonedRes.id = "";
+
+                        document.getElementById("result").style.opacity = "1";
+
+                        if (count <= maxCount) {
+                            await sleep(500);
+                        }
+
+                        result.ontransitionend = function () {
+                            result.ontransitionend = () => { };
+
+                            const current = getCoords(xCoord, yCoord);
+                            const val = parseInt(result.innerText);
+
+                            current.innerHTML = result.innerText;
+
+                            result.style.top = "80px";
+                            result.style.left = "290px";
+                            result.style.opacity = "0";
+                            result.style.display = "none";
+                            // document.body.append(clonedRes);
+                            xCoord++;
+                            start();
+                        };
+
+                        moveTo(xCoord, yCoord, document.getElementById("result"));
+
+                    }
+                });
+
+            });
+
+        }
+
+        let maxRow = 11;
+
+        function ini() {
+            let top = `<tr id="topRow"><th
+                    style="background:#EAECF0;background:linear-gradient(to top right,#EAECF0 49%,#AAA 49.5%,#AAA 50.5%,#EAECF0 51%);line-height:1.2;padding:0.1em 0.4em;">
+                    <div style="margin-left:2em;text-align:right"><i>k</i></div>
+                    <div style="margin-right:2em;text-align:left"><i>n</i></div>
+                </th></tr>`;
+
+            document.getElementById("mainBody").innerHTML = top;
+
+            top = '';
+
+            for (let i = 0; i <= maxRow; i++) {
+                top += `<th style="background: #ececec; color: black; font-weight: bold; vertical-align: middle; text-align: right;"
+                    class="table-rh">${i}
+                </th>`;
+            }
+
+
+            document.getElementById("topRow").innerHTML += top;
+
+            let resultString = "";
+
+            top = ``;
+
+            let c = 0;
+
+            for (let i = 0; i <= maxRow; i++) {
+                top = `<tr>
+                        <th style="background: #ececec; color: black; font-weight: bold; vertical-align: middle; text-align: right;"
+                            class="table-rh">${i}
+                        </th>`;
+                for (let j = 0; j < i + 1; j++) {
+                    if (c < preVals.length) {
+                        top += `<td>${preVals[c]}</td>`;
+                        c++;
+                    } else {
+                        top += `<td></td>`;
+                    }
+                }
+
+                top += `</tr>`;
+                resultString += top;
+            }
+
+
+            xCoord = 1;
+            yCoord = 5;
+
+            document.getElementById("mainBody").innerHTML += resultString;
+
+        }
+
+        let state = 0;
+        table.onclick = function () {
+            if (state == 0) {
+                start();
+            } else if (state == 1) {
+                preVals = generatedVals;
+                maxRow = 99;
+                ini();
+            } else if (state == 2) {
+                analyze();
+            } else if (state == 3) {
+                analyze2();
+            }
+
+            state++;
+        }
+
+        ini();
+
+        const rows = table.querySelectorAll("tr");
+
+
+
+        function analyze() {
+            const allCells = document.getElementsByTagName("td");
+            for (const cell of allCells) {
+                const val = BigInt(cell.textContent);
+                // cell.innerHTML = "";
+
+                if (val % 2n == 0) {
+                    cell.style.backgroundColor = "yellow";
+                } else {
+                    cell.style.backgroundColor = "red";
+
+                }
+            }
+        }
+
+        function analyze2() {
+            const allCells = document.getElementsByTagName("td");
+
+            for (const cell of allCells) {
+
+                cell.style.padding = "0";
+                cell.style.border = "none";
+                const val = parseInt(cell.textContent);
+                cell.innerHTML = "";
+            }
+        }
+
+    </script>
+</body>
+
+</html>
